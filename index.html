@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>فرصتي | Forsati</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f8f7;--card:#fff;--ink:#14201f;--mute:#5d6f6d;--line:#d9e3e1;--brand:#0f5c5a;--onbrand:#fff;--accent:#f2a33a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1716;--card:#16231f;--ink:#e8f1ef;--mute:#9bb0ad;--line:#27403b;--brand:#3fb5ae;--onbrand:#06201e}}
+:root[data-theme="dark"]{--bg:#0e1716;--card:#16231f;--ink:#e8f1ef;--mute:#9bb0ad;--line:#27403b;--brand:#3fb5ae;--onbrand:#06201e}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Cairo,system-ui,sans-serif;line-height:1.6}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;background:var(--brand);color:var(--onbrand);padding:20px 16px 18px}
+h1{margin:0;font-size:28px;font-weight:800}
+header p{margin:2px 0 0;opacity:.9}
+.lang{display:flex;flex:none;border:1px solid #fff8;border-radius:999px;overflow:hidden}.lang button{background:transparent;color:var(--onbrand);border:0;padding:5px 9px;font:inherit;cursor:pointer}.lang button[aria-pressed="true"]{background:var(--onbrand);color:var(--brand);font-weight:600}
+main{max-width:640px;margin:0 auto;padding:14px 14px 90px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 14px;font:inherit;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--brand);color:var(--onbrand);border-color:var(--brand)}
+.bar{display:flex;gap:8px;margin-bottom:12px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
+.bar input{flex:2}.bar select{flex:1}
+.ad{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+.ad h3{margin:0 0 4px;font-size:18px}
+.meta{color:var(--mute);font-size:14px}
+.price{color:var(--brand);font-weight:800}
+.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;background:var(--brand);color:var(--onbrand)}
+.btn.alt{background:transparent;color:var(--mute);border:1px solid var(--line)}
+.fab{position:fixed;inset-inline-start:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--accent);color:#2a1a00;font-size:17px;padding:13px 20px;border-radius:999px;box-shadow:0 4px 14px #0004}
+dialog{border:0;border-radius:16px;padding:18px;width:min(92vw,440px);background:var(--card);color:var(--ink)}
+dialog::backdrop{background:#0008}
+label{display:block;margin:10px 0 4px;font-weight:600}
+.empty{text-align:center;color:var(--mute);padding:36px 10px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<header><div><h1>فرصتي | Forsati</h1><p data-t="slogan"></p></div><div class="lang" id="lang"><button data-l="ar" aria-pressed="true">العربية</button><button data-l="ckb" aria-pressed="false">کوردی</button></div></header>
+<main>
+<div style="text-align:end;margin-bottom:8px"><button class="btn alt" id="auth"></button></div>
+<div class="chips" id="chips"></div>
+<div class="bar"><input id="q" data-tp="search"><select id="city"></select></div>
+<div id="list"></div>
+</main>
+<button class="btn fab" id="add" data-t="add"></button>
+<dialog id="dlg">
+<h2 style="margin:0" data-t="newAd"></h2>
+<label for="f-cat" data-t="sec"></label><select id="f-cat"></select>
+<label for="f-title" data-t="title"></label><input id="f-title" maxlength="60">
+<label for="f-desc" data-t="desc"></label><textarea id="f-desc" rows="3" maxlength="300"></textarea>
+<label for="f-price" data-t="price"></label><input id="f-price" maxlength="30">
+<label for="f-city" data-t="city"></label><input id="f-city" maxlength="30">
+<label for="f-phone" data-t="phone"></label><input id="f-phone" type="tel" inputmode="tel">
+<p id="err" class="meta" style="color:#c0392b;margin:8px 0 0"></p>
+<div class="row"><button class="btn" id="save" data-t="publish"></button><button class="btn alt" id="cancel" data-t="cancel"></button></div>
+</dialog>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getFirestore,collection,addDoc,deleteDoc,doc,onSnapshot,query,orderBy,limit} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+const fapp=initializeApp({apiKey:"AIzaSyCx0YZpRAHbJs3x1g03LrvYCIpBJt36Xzs",authDomain:"forsati-3c524.firebaseapp.com",projectId:"forsati-3c524",storageBucket:"forsati-3c524.firebasestorage.app",messagingSenderId:"255532029469",appId:"1:255532029469:web:a373e6464ecbd7b2ec58f4"});
+const fdb=getFirestore(fapp),auth=getAuth(fapp);
+const CATS=[["💼","وظائف"],["🛍️","بيع وشراء"],["🏠","عقارات"],["🚗","سيارات"],["🔧","خدمات"]];
+const KEY="forsati_ads_v1";
+const L={
+ar:{slogan:"فرصتك تبدأ من هنا 🚀",signIn:"تسجيل الدخول بحساب Google",signOut:"تسجيل الخروج",report:"إبلاغ",reported:"تم إرسال البلاغ، شكراً.",needLogin:"سجّل الدخول أولاً.",repConfirm:"الإبلاغ عن هذا الإعلان؟",search:"ابحث عن إعلان...",add:"+ أضف إعلان",newAd:"إعلان جديد",sec:"القسم",title:"العنوان",desc:"الوصف",price:"السعر (اختياري)",city:"المدينة",phone:"رقم الهاتف أو واتساب",publish:"نشر الإعلان",cancel:"إلغاء",all:"الكل",allCities:"كل المدن",call:"اتصل",wa:"واتساب",del:"حذف",empty:"لا توجد إعلانات هنا بعد.<br>اضغط «أضف إعلان» وكن أول من ينشر.",loading:"جارٍ التحميل...",errReq:"اكتب عنوان الإعلان والمدينة.",errPub:"تعذّر النشر. حاول مرة ثانية.",confirmDel:"حذف هذا الإعلان؟",errDel:"تعذّر الحذف.",noWrite:"النشر متاح للمدعوين كمشاركين فقط."},
+ckb:{slogan:"هەلەکەت لێرەوە دەست پێدەکات 🚀",signIn:"چوونەژوورەوە بە Google",signOut:"چوونەدەرەوە",report:"ڕاپۆرت",reported:"ڕاپۆرتەکە نێردرا، سوپاس.",needLogin:"سەرەتا بچۆ ژوورەوە.",repConfirm:"ڕاپۆرت لەسەر ئەم ڕیکلامە بکرێت؟",search:"بگەڕێ بۆ ڕیکلام...",add:"+ ڕیکلامێک زیاد بکە",newAd:"ڕیکلامی نوێ",sec:"بەش",title:"ناونیشان",desc:"وەسف",price:"نرخ (ئارەزوومەندانە)",city:"شار",phone:"ژمارەی مۆبایل یان واتسئاپ",publish:"بڵاوکردنەوەی ڕیکلام",cancel:"هەڵوەشاندنەوە",all:"هەموو",allCities:"هەموو شارەکان",call:"پەیوەندی",wa:"واتسئاپ",del:"سڕینەوە",empty:"هێشتا هیچ ڕیکلامێک لێرە نییە.<br>دوگمەی «ڕیکلامێک زیاد بکە» دابگرە و یەکەم کەس بە.",loading:"بار دەکرێت...",errReq:"ناونیشانی ڕیکلام و شار بنووسە.",errPub:"بڵاوکردنەوە سەرکەوتوو نەبوو. دووبارە هەوڵ بدەرەوە.",confirmDel:"ئەم ڕیکلامە بسڕدرێتەوە؟",errDel:"سڕینەوە سەرکەوتوو نەبوو.",noWrite:"بڵاوکردنەوە تەنها بۆ بەشداربووە بانگهێشتکراوەکانە."}};
+const CATN={ar:["وظائف","بيع وشراء","عقارات","سيارات","خدمات"],ckb:["کار","کڕین و فرۆشتن","خانووبەرە","ئۆتۆمبێل","خزمەتگوزاری"]};
+const LK="forsati_lang";
+let lang="ar";try{const v=localStorage.getItem(LK);if(L[v])lang=v}catch(e){}
+const t=k=>L[lang][k];
+let ads=[],cat=-1,db=null,uid=null,canWrite=true,ready=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function chips(){
+ const all=[["✨",t("all")],...CATS.map((c,i)=>[c[0],CATN[lang][i]])];
+ $("chips").innerHTML=all.map((c,i)=>`<button class="chip" data-i="${i-1}" aria-pressed="${cat===i-1}">${c[0]} ${c[1]}</button>`).join("");
+ $("f-cat").innerHTML=CATS.map((c,i)=>`<option value="${i}">${c[0]} ${CATN[lang][i]}</option>`).join("");
+}
+function cities(){
+ const cur=$("city").value;
+ const cs=[...new Set(ads.map(a=>a.city).filter(Boolean))];
+ $("city").innerHTML=`<option value="">${t("allCities")}</option>`+cs.map(c=>`<option>${esc(c)}</option>`).join("");
+ $("city").value=cs.includes(cur)?cur:"";
+}
+function render(){
+ const q=$("q").value.trim().toLowerCase(),ct=$("city").value;
+ const r=ads.filter(a=>(cat<0||a.cat===cat)&&(!ct||a.city===ct)&&(!q||(a.title+a.desc).toLowerCase().includes(q)));
+ $("list").innerHTML=r.length?r.slice().reverse().map(a=>{
+  const ph=a.phone.replace(/[^\d+]/g,"");
+  return `<article class="ad"><h3>${CATS[a.cat][0]} ${esc(a.title)}</h3>
+  <div class="meta">📍 ${esc(a.city)}${a.price?` &nbsp; <span class="price">${esc(a.price)}</span>`:""}</div>
+  <p style="margin:6px 0 0">${esc(a.desc)}</p>
+  <div class="row">${ph?`<a class="btn" href="tel:${ph}">${t("call")}</a><a class="btn alt" href="https://wa.me/${ph.replace("+","")}" target="_blank" rel="noopener">${t("wa")}</a>`:""}
+  ${a.owner&&a.owner===uid?`<button class="btn alt" data-del="${a.id}">${t("del")}</button>`:`<button class="btn alt" data-rep="${a.id}">${t("report")}</button>`}</div></article>`}).join("")
+ :(ready?`<div class="empty">${t("empty")}</div>`:`<div class="empty">${t("loading")}</div>`);
+}
+$("chips").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;cat=+b.dataset.i;chips();render()};
+$("q").oninput=render;$("city").onchange=render;
+$("list").onclick=e=>{
+ const d=e.target.dataset.del,r=e.target.dataset.rep;
+ if(d&&confirm(t("confirmDel")))deleteDoc(doc(fdb,"ads",d)).catch(()=>alert(t("errDel")));
+ if(r){if(!uid){alert(t("needLogin"));return}if(confirm(t("repConfirm")))addDoc(collection(fdb,"reports"),{ad:r,by:uid,createdAt:Date.now()}).then(()=>alert(t("reported"))).catch(()=>{})}
+};
+$("add").onclick=()=>{if(!uid){alert(t("needLogin"));signIn();return}$("err").textContent="";$("dlg").showModal()};
+$("cancel").onclick=()=>$("dlg").close();
+$("save").onclick=()=>{
+ const t=$("f-title").value.trim(),c=$("f-city").value.trim();
+ if(!t||!c){$("err").textContent=t("errReq");return}
+ $("save").disabled=true;
+ addDoc(collection(fdb,"ads"),{cat:+$("f-cat").value,title:t,desc:$("f-desc").value.trim(),price:$("f-price").value.trim(),city:c,phone:$("f-phone").value.trim(),owner:uid,createdAt:Date.now()})
+ .then(()=>{["f-title","f-desc","f-price","f-city","f-phone"].forEach(i=>$(i).value="");$("dlg").close();cat=-1;chips()})
+ .catch(()=>{$("err").textContent=t("errPub")})
+ .finally(()=>{$("save").disabled=false});
+};
+function applyLang(){
+ document.documentElement.lang=lang==="ar"?"ar":"ckb";
+ document.querySelectorAll("[data-t]").forEach(e=>e.textContent=t(e.dataset.t));
+ document.querySelectorAll("[data-tp]").forEach(e=>{e.placeholder=t(e.dataset.tp);e.setAttribute("aria-label",t(e.dataset.tp))});
+ $("city").setAttribute("aria-label",t("city"));updateAuth();
+ document.querySelectorAll("#lang button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l===lang));
+ chips();cities();render();
+}
+$("lang").onclick=e=>{const b=e.target.closest("button");if(!b)return;lang=b.dataset.l;try{localStorage.setItem(LK,lang)}catch(x){}applyLang()};
+applyLang();
+function signIn(){signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>{})}
+function updateAuth(){$("auth").textContent=uid?t("signOut"):t("signIn")}
+$("auth").onclick=()=>uid?signOut(auth):signIn();
+onAuthStateChanged(auth,u=>{uid=u?u.uid:null;updateAuth();render()});
+onSnapshot(query(collection(fdb,"ads"),orderBy("createdAt","desc"),limit(200)),sn=>{
+ ads=sn.docs.map(d=>({id:d.id,...d.data()}));ready=true;cities();render();
+},()=>{ready=true;render()});
+</script>
+</body>
+</html>
